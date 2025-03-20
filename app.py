@@ -4,10 +4,11 @@ import os
 import uuid
 from database.db import get_db_connection, hash_password, verify_password
 
-app = Flask("_name_")
-app.secret_key = 'dipika123'
+# ✅ Correct Flask Initialization
+app = Flask(__name__)
+app.secret_key = 'dipika123'  # Secret key for session
 
-# Directory to Store QR Codes
+# ✅ Directory to Store QR Codes
 QR_FOLDER = "static/qrcodes/"
 os.makedirs(QR_FOLDER, exist_ok=True)
 
@@ -22,7 +23,7 @@ def signup():
         email = request.form['email']
         password = request.form['password']
 
-        hashed_password = hash_password(password)  # 🔥 Hash password here
+        hashed_password = hash_password(password)
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
 
@@ -36,7 +37,6 @@ def signup():
 
     return render_template('signup.html')
 
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -46,9 +46,8 @@ def login():
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
-        user = cursor.fetchone()  # Read only one result
-
-        cursor.fetchall()  # ✅ This line will fix the Unread Result Error
+        user = cursor.fetchone()
+        cursor.fetchall()  # ✅ Fix for unread result error
         cursor.close()
         conn.close()
 
@@ -85,8 +84,8 @@ def generate_qr():
     cursor.execute("INSERT INTO qr_codes (user_id, short_url, target_url) VALUES (%s, %s, %s)", (session['user_id'], short_url, url))
     conn.commit()
 
-    # 🎯 Yeth Localhost la Sodun Original URL Store kara
-    qr_code = qrcode.make(url)  # URL direct takla
+    # ✅ Store real URL in QR code
+    qr_code = qrcode.make(url)
     qr_path = os.path.join(QR_FOLDER, f"{short_url}.png")
     qr_code.save(qr_path)
 
@@ -116,7 +115,7 @@ def update_qr():
     cursor.execute("UPDATE qr_codes SET target_url = %s WHERE short_url = %s", (new_url, short_url))
     conn.commit()
 
-    # ✅ Update Zalyavar QR Code Punha Generate Kara
+    # ✅ Update QR Code image as well
     qr_code = qrcode.make(new_url)
     qr_path = os.path.join(QR_FOLDER, f"{short_url}.png")
     qr_code.save(qr_path)
@@ -125,11 +124,13 @@ def update_qr():
     flash("QR Code Link Updated Successfully 🔥", "success")
     return redirect('/dashboard')
 
-
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
 
+# ✅ Final Port Binding Fix for Render Deployment
 if __name__ == '__main__':
-    app.run(debug=True)
+    from os import environ
+    port = int(environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
